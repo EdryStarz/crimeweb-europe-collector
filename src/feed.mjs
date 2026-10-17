@@ -1,4 +1,5 @@
 import { XMLParser } from 'fast-xml-parser';
+import {setTimeout as wait} from 'node:timers/promises';
 
 export function publicUrl(value){
   const u=new URL(value),host=u.hostname.toLowerCase();
@@ -31,7 +32,7 @@ export function parseFeed(xml,feedUrl,now=Date.now()){
   return result;
 }
 
-export async function loadFeed(value){
+async function loadFeedOnce(value){
   let url=publicUrl(value);
   for(let attempt=0;attempt<4;attempt++){
     const response=await fetch(url,{redirect:'manual',signal:AbortSignal.timeout(30000),headers:{accept:'application/rss+xml, application/atom+xml, application/xml, text/xml','user-agent':'EuropeRSSCollector/1.0'}});
@@ -43,4 +44,16 @@ export async function loadFeed(value){
     return parseFeed(Buffer.concat(parts).toString('utf8'),url.href);
   }
   throw new Error('RSS redirect limit');
+}
+
+export async function loadFeed(value){
+  publicUrl(value);
+  for(let attempt=0;;attempt++){
+    try{return await loadFeedOnce(value);}
+    catch(error){
+      const temporary=/^RSS HTTP (?:429|500|502|503|504)$/.test(error.message)||['TypeError','TimeoutError','AbortError'].includes(error.name);
+      if(!temporary||attempt>=2)throw error;
+      await wait(500*2**attempt);
+    }
+  }
 }

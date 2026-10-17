@@ -23,3 +23,5 @@ Standard GitHub-hosted runners are free in public repositories: https://docs.git
 ## Local development
 
 Node.js 22+, `npm ci --ignore-scripts`, `npm test`. `npm start` requires the environment values above. Do not enable shell command tracing with credentials. Failed imports make the workflow fail visibly; successful feed jobs are read back from the application before being counted as persisted.
+
+RSS timeouts, connection failures, HTTP 429 and transient server errors receive up to two bounded retries. Access denials, unsafe URLs and malformed feeds are never bypassed. The optional **Probe public RSS access** workflow tests up to five public RSS URLs from the GitHub runner without receiving any application secret or writing to the application.
