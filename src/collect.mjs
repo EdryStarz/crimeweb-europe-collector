@@ -1,6 +1,7 @@
 import { appendFileSync } from 'node:fs';
 import { setTimeout as wait } from 'node:timers/promises';
 import { publicUrl,loadFeed } from './feed.mjs';
+import { selectSources } from './select-sources.mjs';
 
 const origin=publicUrl(process.env.INGESTION_API_URL).origin,key=process.env.EUROPE_COLLECTOR_SECRET;
 if(!key)throw new Error('Missing protected collector credential');
@@ -14,9 +15,9 @@ async function api(body,query=''){
     throw new Error('Application HTTP '+response.status);
   }
 }
-const data=await api();if(!Array.isArray(data.sources)||data.sources.length>200)throw new Error('Invalid source registry');
-console.log(JSON.stringify({event:'started',due:data.sources.length}));
-for(const source of data.sources){
+const data=await api(),sources=selectSources(data.sources,process.env.SOURCE_ID_PREFIX??'');
+console.log(JSON.stringify({event:'started',due:sources.length}));
+for(const source of sources){
   if(Date.now()>deadline-60000)break;
   const start=await api({action:'begin',sourceId:source.id});if(!start.jobId)continue;
   const base={sourceId:source.id,jobId:start.jobId},counts={fetched:0,created:0,review:0,failed:0};let error;

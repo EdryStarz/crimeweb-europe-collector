@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { spawnSync } from 'node:child_process';
 function run(scenario){
-  return spawnSync(process.execPath,['--import','./test/mock-transport.mjs','src/collect.mjs'],{encoding:'utf8',env:{...process.env,INGESTION_API_URL:'https://collector.example.com',EUROPE_COLLECTOR_SECRET:'test-only-collector-secret',TEST_SCENARIO:scenario,GITHUB_OUTPUT:'',GITHUB_STEP_SUMMARY:''},timeout:20000});
+  return spawnSync(process.execPath,['--import','./test/mock-transport.mjs','src/collect.mjs'],{encoding:'utf8',env:{...process.env,INGESTION_API_URL:'https://collector.example.com',EUROPE_COLLECTOR_SECRET:'test-only-collector-secret',TEST_SCENARIO:scenario,SOURCE_ID_PREFIX:'',GITHUB_OUTPUT:'',GITHUB_STEP_SUMMARY:''},timeout:20000});
 }
 void test('source credentials stay off RSS requests; transient items retry and persisted jobs are read back',()=>{
   const result=run('success');assert.equal(result.status,0,result.stderr);assert.match(result.stdout,/"created":1/);assert.match(result.stdout,/"persisted":true/);assert.doesNotMatch(result.stdout+result.stderr,/test-only-collector-secret/);
