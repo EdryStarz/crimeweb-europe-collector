@@ -10,5 +10,6 @@ test('maintenance respects time and step budgets, backs off on busy/retry, and r
   assert.equal((await runMaintenance(step,{deadline:100000,now:()=>0,maxSteps:2})).steps,2);
   assert.equal((await runMaintenance(step,{deadline:100000,now:()=>100000})).steps,0);
   assert.equal((await runMaintenance(async()=>({more:true,updated:0,busy:true}),{deadline:100000,now:()=>0})).steps,1);
+  assert.equal((await runMaintenance(async()=>({more:false,updated:0,retry:true}),{deadline:100000,now:()=>0})).pending,true,'Provider backoff is pending work, not an empty queue');
   await assert.rejects(runMaintenance(async()=>({more:true,updated:100}),{deadline:100000,now:()=>0}));
 });

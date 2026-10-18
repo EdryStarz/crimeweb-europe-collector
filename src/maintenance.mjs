@@ -4,7 +4,7 @@ export async function runMaintenance(step,{deadline,maxSteps=80,now=Date.now}={}
   while(steps<maxSteps&&now()<deadline-30000){
     const result=await step();
     if(typeof result?.more!=='boolean'||!Number.isInteger(result.updated)||result.updated<0||result.updated>1)throw new Error('Invalid maintenance acknowledgement');
-    steps++;updated+=result.updated;pending=result.more;
+    steps++;updated+=result.updated;pending=Boolean(result.more||result.busy||result.retry);
     if(!result.more||result.busy||result.retry)break;
   }
   return {steps,updated,pending};
