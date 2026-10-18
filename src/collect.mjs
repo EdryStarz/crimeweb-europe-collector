@@ -3,6 +3,7 @@ import { setTimeout as wait } from 'node:timers/promises';
 import { publicUrl,loadFeed } from './feed.mjs';
 import { selectSources } from './select-sources.mjs';
 import {runMaintenance} from './maintenance.mjs';
+import {runArticles} from './articles.mjs';
 
 const origin=publicUrl(process.env.INGESTION_API_URL).origin,key=process.env.EUROPE_COLLECTOR_SECRET;
 if(!key)throw new Error('Missing protected collector credential');
@@ -48,8 +49,14 @@ for(const source of sources){
   console.log(JSON.stringify({event:'completed',sourceId:source.id,...counts,persisted:true}));
   summary.feeds++;for(const name of ['fetched','created','review','failed'])summary[name]+=counts[name];
 }
-// Server selects eligible reports and enforces European scope. No coordinates,
-// source texts, URLs or incident IDs are supplied or printed by this transport.
+// The private server chooses archived article jobs. Only bounded public HTML is
+// transported; nothing is committed or printed, and no app algorithms are here.
+const articles=await runArticles(body=>api(body,'','/api/ingest/articles'),{deadline});
+console.log(JSON.stringify({event:'articles',...articles}));
+const articleStates=await api({action:'stats'},'','/api/ingest/articles');
+console.log(JSON.stringify({event:'article-states',...articleStates}));
+// Server selects eligible reports and enforces European scope. No coordinates
+// or incident IDs are supplied or printed by location maintenance.
 const maintenance=await runMaintenance(()=>api({},'','/api/ingest/locations'),{deadline});
 console.log(JSON.stringify({event:'maintenance',...maintenance}));
 console.log(JSON.stringify({event:'summary',...summary}));

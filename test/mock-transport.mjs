@@ -10,6 +10,11 @@ globalThis.fetch=async(value,options={})=>{
   }
   assert.equal(url.origin,'https://collector.example.com');assert.equal(options.redirect,'error');assert.equal(headers.get('x-europe-collector-secret'),token);
   if(scenario==='unauthorized')return new Response(null,{status:401});
+  if(url.pathname==='/api/ingest/articles'){
+    const {action}=JSON.parse(options.body);assert.ok(['next','stats'].includes(action));
+    if(action==='stats')return Response.json({states:[]});
+    return Response.json({more:false,job:null});
+  }
   if(url.pathname==='/api/ingest/locations'){
     assert.deepEqual(JSON.parse(options.body),{});
     return Response.json({updated:0,more:false});
