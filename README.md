@@ -10,6 +10,8 @@ The application remains responsible for validation, classification, location unc
 
 After feed collection, the runner performs up to 80 resumable server-maintenance steps within the same time budget. The server alone selects eligible European reports and stores source-backed street/district coordinates. This repository contains only the authenticated transport, not the geolocation implementation, map data, or application code. Maintenance accepts no submitted coordinates or arbitrary URLs. Failed lookups keep approximate locations; incomplete work resumes on later runs without a personal computer or map zooming.
 
+For historical backfill, **Run workflow → maintenance_only** skips RSS and feed writes, but runs the same restricted server maintenance. It cannot force a deferred lookup, broaden the region, add sources or submit coordinates. Normal runs reserve three minutes for enrichment. Deferred records are counted separately and do not stop unrelated work; unfinished/backoff work continues on later runs. A maintenance-only run does not publish a monthly news-collection report.
+
 Manual **Run workflow** accepts an optional `source_prefix` to probe a group of newly registered feeds (for example `local-`). This only filters the server-provided due registry; it cannot add feeds or force polling. Leave it empty for the full European queue. Scheduled runs always use the full queue. The equivalent local variable is `SOURCE_ID_PREFIX`.
 
 ## Protected configuration

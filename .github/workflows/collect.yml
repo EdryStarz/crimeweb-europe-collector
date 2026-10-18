@@ -9,6 +9,11 @@ on:
         type: string
         required: false
         default: ''
+      maintenance_only:
+        description: 'Continue server-side historical enrichment without fetching new feeds'
+        type: boolean
+        required: false
+        default: false
 permissions:
   contents: read
 concurrency:
@@ -37,8 +42,10 @@ jobs:
           INGESTION_API_URL: ${{ vars.INGESTION_API_URL }}
           EUROPE_COLLECTOR_SECRET: ${{ secrets.EUROPE_COLLECTOR_SECRET }}
           SOURCE_ID_PREFIX: ${{ inputs.source_prefix }}
+          MAINTENANCE_ONLY: ${{ inputs.maintenance_only }}
   monthly-report:
     needs: collect
+    if: ${{ needs.collect.outputs.feeds != '0' }}
     runs-on: ubuntu-latest
     timeout-minutes: 2
     permissions:

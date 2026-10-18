@@ -16,10 +16,11 @@ async function api(body,query='',endpoint=path){
     throw new Error('Application HTTP '+response.status);
   }
 }
-const data=await api(),sources=selectSources(data.sources,process.env.SOURCE_ID_PREFIX??'');
-console.log(JSON.stringify({event:'started',due:sources.length}));
+const maintenanceOnly=process.env.MAINTENANCE_ONLY==='true';
+const data=await api(),selected=selectSources(data.sources,process.env.SOURCE_ID_PREFIX??''),sources=maintenanceOnly?[]:selected;
+console.log(JSON.stringify({event:'started',due:sources.length,maintenanceOnly}));
 for(const source of sources){
-  if(Date.now()>deadline-60000)break;
+  if(Date.now()>deadline-180000)break;
   const start=await api({action:'begin',sourceId:source.id});if(!start.jobId)continue;
   const base={sourceId:source.id,jobId:start.jobId},counts={fetched:0,created:0,review:0,failed:0};let error;
   try{
