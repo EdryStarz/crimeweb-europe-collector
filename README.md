@@ -8,6 +8,8 @@ GitHub Actions runs at minute 17 and 47 of every hour, day and night, on standar
 
 The application remains responsible for validation, classification, location uncertainty, privacy, deduplication and persistence. Google News snippets are headlines, not full article text. Reports are not independently verified facts or a crime-rate ranking.
 
+After feed collection, the runner performs up to 80 resumable server-maintenance steps within the same time budget. The server alone selects eligible European reports and stores source-backed street/district coordinates. This repository contains only the authenticated transport, not the geolocation implementation, map data, or application code. Maintenance accepts no submitted coordinates or arbitrary URLs. Failed lookups keep approximate locations; incomplete work resumes on later runs without a personal computer or map zooming.
+
 Manual **Run workflow** accepts an optional `source_prefix` to probe a group of newly registered feeds (for example `local-`). This only filters the server-provided due registry; it cannot add feeds or force polling. Leave it empty for the full European queue. Scheduled runs always use the full queue. The equivalent local variable is `SOURCE_ID_PREFIX`.
 
 ## Protected configuration

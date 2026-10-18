@@ -2,14 +2,15 @@ import { appendFileSync } from 'node:fs';
 import { setTimeout as wait } from 'node:timers/promises';
 import { publicUrl,loadFeed } from './feed.mjs';
 import { selectSources } from './select-sources.mjs';
+import {runMaintenance} from './maintenance.mjs';
 
 const origin=publicUrl(process.env.INGESTION_API_URL).origin,key=process.env.EUROPE_COLLECTOR_SECRET;
 if(!key)throw new Error('Missing protected collector credential');
 const deadline=Date.now()+11*60000,summary={feeds:0,fetched:0,created:0,review:0,failed:0};
 const path='/api/ingest/feed';
-async function api(body,query=''){
+async function api(body,query='',endpoint=path){
   for(let attempt=0;;attempt++){
-    const response=await fetch(origin+path+query,{redirect:'error',method:body?'POST':'GET',headers:{'content-type':'application/json','x-europe-collector-secret':key},body:body?JSON.stringify(body):undefined,signal:AbortSignal.timeout(90000)});
+    const response=await fetch(origin+endpoint+query,{redirect:'error',method:body?'POST':'GET',headers:{'content-type':'application/json','x-europe-collector-secret':key},body:body?JSON.stringify(body):undefined,signal:AbortSignal.timeout(90000)});
     if(response.ok)return response.json();
     if(attempt<3&&[429,502,503,504].includes(response.status)){await wait(1000*2**attempt);continue;}
     throw new Error('Application HTTP '+response.status);
@@ -46,6 +47,10 @@ for(const source of sources){
   console.log(JSON.stringify({event:'completed',sourceId:source.id,...counts,persisted:true}));
   summary.feeds++;for(const name of ['fetched','created','review','failed'])summary[name]+=counts[name];
 }
+// Server selects eligible reports and enforces European scope. No coordinates,
+// source texts, URLs or incident IDs are supplied or printed by this transport.
+const maintenance=await runMaintenance(()=>api({},'','/api/ingest/locations'),{deadline});
+console.log(JSON.stringify({event:'maintenance',...maintenance}));
 console.log(JSON.stringify({event:'summary',...summary}));
 if(process.env.GITHUB_STEP_SUMMARY)appendFileSync(process.env.GITHUB_STEP_SUMMARY,'## Europe RSS collection\n\n'+Object.entries(summary).map(([name,count])=>'- '+name+': '+count).join('\n')+'\n\nSource reports are not independent verification.\n');
 if(process.env.GITHUB_OUTPUT)for(const [name,count] of Object.entries(summary))appendFileSync(process.env.GITHUB_OUTPUT,name+'='+count+'\n');

@@ -9,6 +9,10 @@ globalThis.fetch=async(value,options={})=>{
   }
   assert.equal(url.origin,'https://collector.example.com');assert.equal(options.redirect,'error');assert.equal(headers.get('x-europe-collector-secret'),token);
   if(scenario==='unauthorized')return new Response(null,{status:401});
+  if(url.pathname==='/api/ingest/locations'){
+    assert.deepEqual(JSON.parse(options.body),{});
+    return Response.json({updated:0,more:false});
+  }
   if(url.searchParams.has('jobId'))return Response.json({job:{...stored,created:scenario==='bad-readback'?999:stored.created,completedAt:Date.now()}});
   if(!options.body)return Response.json({sources:[{id:'example-rss',url:scenario==='private-source'?'https://127.0.0.1/feed':'https://news.google.com/rss'}]});
   const body=JSON.parse(options.body);
