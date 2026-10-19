@@ -25,7 +25,8 @@ export async function publicRequest(value,init={}){
   const address=await Promise.race([publicAddress(u.hostname),new Promise((_,reject)=>{abort=()=>reject(signal.reason);signal.addEventListener('abort',abort,{once:true});})]).finally(()=>signal.removeEventListener('abort',abort));
   signal.throwIfAborted();
   return new Promise((resolve,reject)=>{
-    const req=httpsRequest(u,{method:'GET',signal,headers:{...init.headers,'accept-encoding':'identity'},lookup:(_host,options,callback)=>{
+    if(init.method&&init.method!=='GET'&&!(init.method==='POST'&&u.hostname==='news.google.com'&&u.pathname==='/_/DotsSplashUi/data/batchexecute'))throw new Error('redirect_blocked');
+    const req=httpsRequest(u,{method:init.method??'GET',signal,headers:{...init.headers,'accept-encoding':'identity'},lookup:(_host,options,callback)=>{
       if(options.all)callback(null,[{address,family:4}]);else callback(null,address,4);
     }},res=>{
       const status=res.statusCode??502,headers=new Headers();
@@ -37,6 +38,6 @@ export async function publicRequest(value,init={}){
       if(empty)res.resume();
       resolve(new Response(empty?null:Readable.toWeb(stream),{status,headers}));
     });
-    req.on('error',reject);req.end();
+    req.on('error',reject);req.end(init.body);
   });
 }

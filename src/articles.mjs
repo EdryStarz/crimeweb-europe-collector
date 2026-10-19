@@ -1,5 +1,6 @@
 import {publicUrl} from './feed.mjs';
 import {publicRequest} from './public-request.mjs';
+import {loadGoogleProof} from './google-news.mjs';
 const agent='CrimeWebArticleCollector/1.0';
 export function robotsAllowed(text,path){
   const groups=[];let agents=[],rules=[],started=false;
@@ -51,18 +52,27 @@ export async function loadArticle(job,{request=publicRequest,robotsCache=new Map
 }
 /** Only transport: jobs and allowed origins come from the authenticated app.
  * Classification, extraction and raw article storage stay in its private code. */
-export async function runArticles(api,{deadline,now=Date.now,maxSteps=50}={}){
+export async function runArticles(api,{deadline,now=Date.now,maxSteps=50,request}={}){
   let steps=0,stored=0,unavailable=0,pending=true;const robotsCache=new Map();
   while(steps<maxSteps&&now()<deadline-120000){
-    const result=await api({action:'next'});steps++;
+    const result=await api({action:'next',protocol:2});steps++;
     if(typeof result?.more!=='boolean')throw new Error('Invalid article queue acknowledgement');
     pending=result.more;
     if(!result.job){if(!pending)break;continue;}
-    const job=result.job;
+    let job=result.job;
     if(typeof job.id!=='string'||typeof job.token!=='string'||!Array.isArray(job.allowedHosts)||job.allowedHosts.length>100)throw new Error('Invalid article job');
     let delivery;
-    try{delivery=await loadArticle(job,{robotsCache});}
-    catch(e){const code=/^(?:http_(?:401|403|404|429|500|502|503|504)|robots_denied|unsupported_type|oversized|redirect_blocked|redirect_limit|empty_body)$/.test(e.message)?e.message:'network';delivery={error:code};}
+    try{
+      if(job.kind==='google'){
+        const proof=await loadGoogleProof(job,{request});
+        const resolved=await api({action:'resolve',id:job.id,token:job.token,...proof});
+        if(resolved.status==='stale'){unavailable++;continue;}
+        if(resolved.status!=='authorized'||resolved.job?.id!==job.id||resolved.job?.token!==job.token||!Array.isArray(resolved.job?.allowedHosts)||resolved.job.allowedHosts.length>100)throw new Error('Invalid article origin acknowledgement');
+        job=resolved.job;
+      }
+      delivery=await loadArticle(job,{robotsCache,request});
+    }
+    catch(e){const code=/^(?:http_(?:401|403|404|429|500|502|503|504)|robots_denied|unsupported_type|oversized|redirect_blocked|redirect_limit|empty_body|google_unresolved|google_rate_limited|google_unavailable)$/.test(e.message)?e.message:'network';delivery={error:code};}
     const saved=await api({action:'finish',id:job.id,token:job.token,...delivery});
     if(saved.status==='succeeded')stored++;
     else if(['unavailable','stale'].includes(saved.status))unavailable++;
