@@ -52,7 +52,7 @@ export async function loadArticle(job,{request=publicRequest,robotsCache=new Map
 }
 /** Only transport: jobs and allowed origins come from the authenticated app.
  * Classification, extraction and raw article storage stay in its private code. */
-export async function runArticles(api,{deadline,now=Date.now,maxSteps=50,request}={}){
+export async function runArticles(api,{deadline,now=Date.now,maxSteps=150,request}={}){
   let steps=0,stored=0,unavailable=0,pending=true;const robotsCache=new Map();
   while(steps<maxSteps&&now()<deadline-120000){
     const result=await api({action:'next',protocol:2});steps++;
