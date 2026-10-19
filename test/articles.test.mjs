@@ -17,3 +17,12 @@ test('an empty queue ends without fetching a publisher; malformed responses fail
   assert.deepEqual(await runArticles(async()=>({more:false,job:null}),{deadline:500000,now:()=>0}),{steps:1,stored:0,unavailable:0,pending:false});
   await assert.rejects(runArticles(async()=>({}),{deadline:500000,now:()=>0}));
 });
+test('publisher robots redirects stay within issued origins and are checked before HTML',async()=>{
+  const job={url:'https://news.example.com/story',allowedHosts:['news.example.com','www.example.com']};let articles=0;
+  const request=async url=>{
+    if(url==='https://news.example.com/robots.txt')return new Response(null,{status:301,headers:{location:'https://www.example.com/robots.txt'}});
+    if(url==='https://www.example.com/robots.txt')return new Response('User-agent: *\nDisallow: /story');
+    articles++;return new Response('article');
+  };
+  await assert.rejects(loadArticle(job,{request}),/robots_denied/);assert.equal(articles,0);
+});

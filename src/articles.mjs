@@ -1,4 +1,5 @@
 import {publicUrl} from './feed.mjs';
+import {publicRequest} from './public-request.mjs';
 const agent='CrimeWebArticleCollector/1.0';
 export function robotsAllowed(text,path){
   const groups=[];let agents=[],rules=[],started=false;
@@ -20,22 +21,28 @@ async function bounded(response,max){
   try{for(;;){const r=await reader.read();if(r.done)break;n+=r.value.length;if(n>max)throw new Error('oversized');parts.push(r.value);}}finally{await reader.cancel();}
   return Buffer.concat(parts).toString('utf8');
 }
-export async function loadArticle(job,{request=fetch,robotsCache=new Map()}={}){
+export async function loadArticle(job,{request=publicRequest,robotsCache=new Map()}={}){
   const check=value=>{const u=publicUrl(value);if(!job.allowedHosts.includes(u.hostname))throw new Error('redirect_blocked');return u;};
   let url=check(job.url);
   for(let hop=0;hop<4;hop++){
     let robots=robotsCache.get(url.origin);
     if(robots===undefined){
-      const r=await request(url.origin+'/robots.txt',{redirect:'manual',signal:AbortSignal.timeout(15000),headers:{'user-agent':agent}});
-      if(r.status===404)robots='';
-      else if(r.ok)robots=await bounded(r,300000);
-      else if(r.status===429||r.status>=500)throw new Error('http_'+r.status);
-      else throw new Error('robots_denied');
+      let robotUrl=check(url.origin+'/robots.txt');
+      for(let hop=0;hop<4;hop++){
+        const r=await request(robotUrl.href,{redirect:'manual',signal:AbortSignal.timeout(15000),headers:{'user-agent':agent}});
+        if(r.status>=300&&r.status<400){await r.body?.cancel();robotUrl=check(new URL(r.headers.get('location')||'',robotUrl).href);continue;}
+        if(r.status===404)robots='';
+        else if(r.ok)robots=await bounded(r,300000);
+        else if(r.status===429||r.status>=500)throw new Error('http_'+r.status);
+        else throw new Error('robots_denied');
+        break;
+      }
+      if(robots===undefined)throw new Error('redirect_limit');
       robotsCache.set(url.origin,robots);
     }
     if(!robotsAllowed(robots,url.pathname+url.search))throw new Error('robots_denied');
     const r=await request(url.href,{redirect:'manual',signal:AbortSignal.timeout(20000),headers:{'user-agent':agent,accept:'text/html'}});
-    if(r.status>=300&&r.status<400){url=check(new URL(r.headers.get('location')||'',url).href);continue;}
+    if(r.status>=300&&r.status<400){await r.body?.cancel();url=check(new URL(r.headers.get('location')||'',url).href);continue;}
     if(!r.ok)throw new Error('http_'+r.status);
     if(!/text\/html|application\/xhtml\+xml/i.test(r.headers.get('content-type')??''))throw new Error('unsupported_type');
     return {url:url.href,html:await bounded(r,1_000_000)};
