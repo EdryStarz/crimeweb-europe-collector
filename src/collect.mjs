@@ -17,6 +17,15 @@ async function api(body,query='',endpoint=path){
     throw new Error('Application HTTP '+response.status);
   }
 }
+async function optionalStage(name,operation){
+  try{return await operation();}
+  catch{
+    // Enrichment queues are resumable; an intermittent 503 must not mark
+    // successfully persisted feed collection as failed or starve later regions.
+    console.log(JSON.stringify({event:name+'-unavailable',retryOnNextRun:true}));
+    return null;
+  }
+}
 const maintenanceOnly=process.env.MAINTENANCE_ONLY==='true';
 const data=await api(),selected=selectSources(data.sources,process.env.SOURCE_ID_PREFIX??''),sources=maintenanceOnly?[]:selected;
 console.log(JSON.stringify({event:'started',due:sources.length,maintenanceOnly}));
@@ -51,15 +60,15 @@ for(const source of sources){
 }
 // The private server chooses archived article jobs. Only bounded public HTML is
 // transported; nothing is committed or printed, and no app algorithms are here.
-const articles=await runArticles(body=>api(body,'','/api/ingest/articles'),{deadline});
-console.log(JSON.stringify({event:'articles',...articles}));
-const articleStates=await api({action:'stats'},'','/api/ingest/articles');
-console.log(JSON.stringify({event:'article-states',...articleStates}));
-// Server selects eligible reports and enforces European scope. No coordinates
+const articles=await optionalStage('articles',()=>runArticles(body=>api(body,'','/api/ingest/articles'),{deadline}));
+if(articles)console.log(JSON.stringify({event:'articles',...articles}));
+const articleStates=await optionalStage('article-states',()=>api({action:'stats'},'','/api/ingest/articles'));
+if(articleStates)console.log(JSON.stringify({event:'article-states',...articleStates}));
+// Server selects eligible reports and enforces source scope. No coordinates
 // or incident IDs are supplied or printed by location maintenance.
-const maintenance=await runMaintenance(()=>api({},'','/api/ingest/locations'),{deadline});
-console.log(JSON.stringify({event:'maintenance',...maintenance}));
+const maintenance=await optionalStage('maintenance',()=>runMaintenance(()=>api({},'','/api/ingest/locations'),{deadline}));
+if(maintenance)console.log(JSON.stringify({event:'maintenance',...maintenance}));
 console.log(JSON.stringify({event:'summary',...summary}));
-if(process.env.GITHUB_STEP_SUMMARY)appendFileSync(process.env.GITHUB_STEP_SUMMARY,'## Europe RSS collection\n\n'+Object.entries(summary).map(([name,count])=>'- '+name+': '+count).join('\n')+'\n\nSource reports are not independent verification.\n');
+if(process.env.GITHUB_STEP_SUMMARY)appendFileSync(process.env.GITHUB_STEP_SUMMARY,'## Scheduled RSS collection\n\n'+Object.entries(summary).map(([name,count])=>'- '+name+': '+count).join('\n')+'\n\nSource reports are not independently verified facts.\n');
 if(process.env.GITHUB_OUTPUT)for(const [name,count] of Object.entries(summary))appendFileSync(process.env.GITHUB_OUTPUT,name+'='+count+'\n');
 if(summary.failed)process.exitCode=1;
