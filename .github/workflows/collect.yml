@@ -1,11 +1,11 @@
-name: Collect European news
+name: Collect scheduled regional news
 on:
   schedule:
     - cron: '17,47 * * * *'
   workflow_dispatch:
     inputs:
       source_prefix:
-        description: 'Optional registered source ID prefix; empty collects all due European feeds'
+        description: 'Optional registered source ID prefix; empty collects all due regional feeds'
         type: string
         required: false
         default: ''
@@ -17,7 +17,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: europe-news-collector
+  group: regional-news-collector
   cancel-in-progress: false
 jobs:
   collect:
