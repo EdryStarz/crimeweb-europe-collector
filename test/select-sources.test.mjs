@@ -29,6 +29,20 @@ void test('limited run budget gives extra source slots to underserved Asia, Afri
   assert.deepEqual(countries.map(count),[2,2,2,5,4,4]);
   assert.equal(new Set(selectSources(input).map(source=>source.id)).size,input.length);
 });
+void test('country-capital feeds route by ISO code even when country labels are unfamiliar',()=>{
+  const input=[
+    {id:'country-capital-nz',country:'New Zealand'},
+    {id:'country-capital-ke',country:'Kenya'},
+    {id:'country-capital-jp',country:'Japan'},
+    {id:'country-capital-br',country:'Brazil'},
+    {id:'country-capital-us',country:'United States'},
+    {id:'country-capital-va',country:'Holy See'},
+  ];
+  assert.deepEqual(selectSources(input).map(source=>source.id),[
+    'country-capital-va','country-capital-us','country-capital-br',
+    'country-capital-jp','country-capital-ke','country-capital-nz',
+  ]);
+});
 void test('worldwide registries over the old 200-source limit are accepted but remain bounded',()=>{
   const input=Array.from({length:284},(_,index)=>({id:'world-city-'+index,country:'Japan'}));
   assert.equal(selectSources(input).length,284);
