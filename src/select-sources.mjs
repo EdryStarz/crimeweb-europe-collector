@@ -42,7 +42,10 @@ function interleaveByRegion(sources) {
 
 export function selectSources(sources,prefix=''){
   if(!/^[a-z0-9-]{0,80}$/.test(prefix))throw new Error('Invalid source prefix');
-  if(!Array.isArray(sources)||sources.length>200||sources.some(source=>!source||typeof source.id!=='string'))throw new Error('Invalid source registry');
+  // The API may return several hundred city feeds now that worldwide regions
+  // are enabled. Keep a generous bound against malformed responses without
+  // rejecting the valid global registry.
+  if(!Array.isArray(sources)||sources.length>1000||sources.some(source=>!source||typeof source.id!=='string'))throw new Error('Invalid source registry');
   const selected=prefix?sources.filter(source=>source.id.startsWith(prefix)):sources;
   return interleaveByRegion(selected);
 }
