@@ -19,6 +19,16 @@ void test('due feeds are interleaved so every configured continent gets an early
   const input=[northAmerica,southAmerica,asia,africa,oceania,europe];
   assert.deepEqual(selectSources(input),[europe,northAmerica,southAmerica,asia,africa,oceania]);
 });
+void test('limited run budget gives extra source slots to underserved Asia, Africa and Oceania',()=>{
+  const countries=['France','United States','Brazil','Japan','Egypt','Australia'];
+  const input=countries.flatMap((country,index)=>Array.from({length:10},(_,n)=>({
+    id:'source-'+index+'-'+n,country
+  })));
+  const firstRun=selectSources(input).slice(0,19);
+  const count=(country)=>firstRun.filter(source=>source.country===country).length;
+  assert.deepEqual(countries.map(count),[2,2,2,5,4,4]);
+  assert.equal(new Set(selectSources(input).map(source=>source.id)).size,input.length);
+});
 void test('worldwide registries over the old 200-source limit are accepted but remain bounded',()=>{
   const input=Array.from({length:284},(_,index)=>({id:'world-city-'+index,country:'Japan'}));
   assert.equal(selectSources(input).length,284);

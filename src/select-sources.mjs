@@ -27,12 +27,14 @@ function regionOf(source) {
 }
 
 function interleaveByRegion(sources) {
-  const regions=['europe','north-america','south-america','asia','africa','oceania'];
-  const queues=new Map(regions.map(region=>[region,[]]));
+  // Reserve more slots for Asia, Africa and Oceania until their coverage
+  // catches up. Europe and both Americas still receive guaranteed early slots.
+  const schedule=['europe','north-america','south-america','asia','africa','oceania','asia','africa','oceania','asia','africa','oceania'];
+  const queues=new Map([...new Set(schedule)].map(region=>[region,[]]));
   for(const source of sources)queues.get(regionOf(source)).push(source);
   const ordered=[];
   while(ordered.length<sources.length){
-    for(const region of regions){
+    for(const region of schedule){
       const source=queues.get(region).shift();
       if(source)ordered.push(source);
     }
