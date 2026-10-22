@@ -2,6 +2,15 @@ name: Collect scheduled regional news
 on:
   schedule:
     - cron: '17,47 * * * *'
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/collect.yml'
+      - 'src/**'
+      - 'test/**'
+      - 'package.json'
+      - 'package-lock.json'
   workflow_dispatch:
     inputs:
       source_prefix:
