@@ -19,7 +19,12 @@ void test('due feeds are interleaved so every configured continent gets an early
   const input=[northAmerica,southAmerica,asia,africa,oceania,europe];
   assert.deepEqual(selectSources(input),[europe,northAmerica,southAmerica,asia,africa,oceania]);
 });
+void test('worldwide registries over the old 200-source limit are accepted but remain bounded',()=>{
+  const input=Array.from({length:284},(_,index)=>({id:'world-city-'+index,country:'Japan'}));
+  assert.equal(selectSources(input).length,284);
+  assert.throws(()=>selectSources(Array(1001).fill({id:'x'})));
+});
 void test('source selection rejects malformed registries and input rather than evaluating it',()=>{
   for(const value of ['https://other.example.com','../','x; echo token','x'.repeat(81),'LOCAL'])assert.throws(()=>selectSources([],value));
-  for(const input of [null,{},Array(201).fill({id:'x'}),[null],[{url:'https://example.com'}]])assert.throws(()=>selectSources(input));
+  for(const input of [null,{},[null],[{url:'https://example.com'}]])assert.throws(()=>selectSources(input));
 });
